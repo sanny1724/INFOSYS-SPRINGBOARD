@@ -1,0 +1,1 @@
+{"status": "completed", "poacher_detected": true, "weapon_detected": "No", "poacher_confidence": 95.4, "weapon_confidence": 0.0, "mail_sent": "Yes", "video_url": "http://localhost:8000/uploads/processed_Screenshot 2025-10-21 211742.png", "detections": [{"box": [8, 29, 368, 526], "class_id": 0, "label": "person", "confidence": 0.9537456631660461}]}
