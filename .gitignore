@@ -20,6 +20,7 @@ coverage/
 
 # Wildeye AI
 backend/uploads/
+uploads/
 backend/camera_debug.log
 backend/debug_log.txt
 backend/debug_output.txt

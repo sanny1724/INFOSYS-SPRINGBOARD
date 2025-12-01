@@ -57,6 +57,10 @@ function App() {
               weapon: `${resultData.weapon_confidence}%`,
               mailSent: resultData.mail_sent
             })
+          } else if (resultData.status === 'error') {
+            clearInterval(pollInterval)
+            setUploading(false)
+            alert(`Analysis failed: ${resultData.message}`)
           }
         } catch (err) {
           console.error("Polling error:", err)

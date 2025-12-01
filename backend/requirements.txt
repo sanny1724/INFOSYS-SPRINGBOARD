@@ -6,5 +6,5 @@ ultralytics
 python-dotenv
 numpy
 websockets
-watchfilestic
+watchfiles
 python-dotenv

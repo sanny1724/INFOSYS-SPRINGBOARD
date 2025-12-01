@@ -28,136 +28,146 @@ def process_video(video_path: str):
     # weapon_classes moved to global
     # animal_classes moved to global
 
-    if is_image:
-        frame = cv2.imread(video_path)
-        if frame is None:
-            print("Error opening image file")
-            return
-        
-        # Ultra-low confidence to catch everything
-        # Custom plotting to label weapons clearly
-        annotated_frame = frame.copy()
-        
-        results = model(frame, conf=0.05)
-        
-        detections = []
-        for box in results[0].boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            cls = int(box.cls[0])
-            conf = float(box.conf[0])
+    try:
+        if is_image:
+            frame = cv2.imread(video_path)
+            if frame is None:
+                print("Error opening image file")
+                with open(json_path, "w") as f:
+                    json.dump({"status": "error", "message": "Could not open image file"}, f)
+                return
             
-            # Default values
-            label = model.names[cls]
-            color = (0, 255, 0)
-            class_id = -1 # Unknown
+            # Ultra-low confidence to catch everything
+            # Custom plotting to label weapons clearly
+            annotated_frame = frame.copy()
             
-            if cls == 0: # Person
-                class_id = 0
-                label = "person" # User requested 'person' class name
-                display_label = f"Poacher {int(conf * 100)}%" # Keep visual alert
-                color = (0, 0, 255) # Red for poacher
-                poacher_detected = True
-                max_poacher_conf = max(max_poacher_conf, conf)
-                
-            elif cls in weapon_classes:
-                class_id = 2
-                label = "weapon" # User requested strict 'weapon' label
-                display_label = f"weapon {int(conf * 100)}%"
-                color = (0, 0, 255) # Red for weapon
-                weapon_detected = True
-                max_weapon_conf = max(max_weapon_conf, conf)
-                
-            elif cls in animal_classes:
-                class_id = 1
-                label = "animal"
-                display_label = f"animal {int(conf * 100)}%"
-                color = (255, 255, 0) # Cyan/Yellow for animal
-            else:
-                display_label = f"{label} {int(conf * 100)}%"
-
-            # Add to detailed detections list
-            if class_id != -1:
-                detections.append({
-                    "box": [x1, y1, x2, y2],
-                    "class_id": class_id,
-                    "label": label,
-                    "confidence": conf
-                })
+            results = model(frame, conf=0.05)
             
-            # Draw box
-            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
-            # Draw label
-            cv2.putText(annotated_frame, display_label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
-        
-        # Analyze detections
-        with open("debug_log.txt", "a") as log:
-            log.write(f"Filename: {filename}, Is Image: {is_image}\n")
-            log.write(f"Detections found: {len(results[0].boxes)}\n")
-            for det in detections:
-                log.write(f"Detected: {det['label']} (Class {det['class_id']}) - Confidence: {det['confidence']:.2f}\n")
-                
-        cv2.imwrite(output_path, annotated_frame)
-        
-    else:
-        # Video Processing
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            print("Error opening video file")
-            return
-
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-        
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-            
-            results = model(frame, conf=0.15)
-            annotated_frame = results[0].plot()
-            
+            detections = []
             for box in results[0].boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
                 cls = int(box.cls[0])
                 conf = float(box.conf[0])
                 
-                if cls == 0:
+                # Default values
+                label = model.names[cls]
+                color = (0, 255, 0)
+                class_id = -1 # Unknown
+                
+                if cls == 0: # Person
+                    class_id = 0
+                    label = "person" # User requested 'person' class name
+                    display_label = f"Poacher {int(conf * 100)}%" # Keep visual alert
+                    color = (0, 0, 255) # Red for poacher
                     poacher_detected = True
                     max_poacher_conf = max(max_poacher_conf, conf)
-                if cls in weapon_classes:
+                    
+                elif cls in weapon_classes:
+                    class_id = 2
+                    label = "weapon" # User requested strict 'weapon' label
+                    display_label = f"weapon {int(conf * 100)}%"
+                    color = (0, 0, 255) # Red for weapon
                     weapon_detected = True
                     max_weapon_conf = max(max_weapon_conf, conf)
+                    
+                elif cls in animal_classes:
+                    class_id = 1
+                    label = "animal"
+                    display_label = f"animal {int(conf * 100)}%"
+                    color = (255, 255, 0) # Cyan/Yellow for animal
+                else:
+                    display_label = f"{label} {int(conf * 100)}%"
+    
+                # Add to detailed detections list
+                if class_id != -1:
+                    detections.append({
+                        "box": [x1, y1, x2, y2],
+                        "class_id": class_id,
+                        "label": label,
+                        "confidence": conf
+                    })
                 
-            out.write(annotated_frame)
-
-        cap.release()
-        out.release()
+                # Draw box
+                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
+                # Draw label
+                cv2.putText(annotated_frame, display_label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+            
+            # Analyze detections
+            with open("debug_log.txt", "a") as log:
+                log.write(f"Filename: {filename}, Is Image: {is_image}\n")
+                log.write(f"Detections found: {len(results[0].boxes)}\n")
+                for det in detections:
+                    log.write(f"Detected: {det['label']} (Class {det['class_id']}) - Confidence: {det['confidence']:.2f}\n")
+                    
+            cv2.imwrite(output_path, annotated_frame)
+            
+        else:
+            # Video Processing
+            cap = cv2.VideoCapture(video_path)
+            if not cap.isOpened():
+                print("Error opening video file")
+                with open(json_path, "w") as f:
+                    json.dump({"status": "error", "message": "Could not open video file"}, f)
+                return
     
-    mail_sent = False
-    if poacher_detected:
-        print("ALERT: Poacher (Person) detected!")
-        from mailer import send_alert_email
-        mail_sent = send_alert_email(output_path)
-
-    # Save results to JSON
-    results_data = {
-        "status": "completed",
-        "poacher_detected": poacher_detected,
-        "weapon_detected": "Yes" if weapon_detected else "No",
-        "poacher_confidence": round(max_poacher_conf * 100, 1),
-        "weapon_confidence": round(max_weapon_conf * 100, 1),
-        "mail_sent": "Yes" if mail_sent else "No (Check .env)" if poacher_detected else "N/A",
-        "video_url": f"http://localhost:8000/uploads/{os.path.basename(output_path)}",
-        "detections": detections if is_image else [] # Only detailed detections for images for now
-    }
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = int(cap.get(cv2.CAP_PROP_FPS))
+            
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
+            out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+            
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                
+                results = model(frame, conf=0.15)
+                annotated_frame = results[0].plot()
+                
+                for box in results[0].boxes:
+                    cls = int(box.cls[0])
+                    conf = float(box.conf[0])
+                    
+                    if cls == 0:
+                        poacher_detected = True
+                        max_poacher_conf = max(max_poacher_conf, conf)
+                    if cls in weapon_classes:
+                        weapon_detected = True
+                        max_weapon_conf = max(max_weapon_conf, conf)
+                    
+                out.write(annotated_frame)
     
-    with open(json_path, "w") as f:
-        json.dump(results_data, f)
+            cap.release()
+            out.release()
+        
+        mail_sent = False
+        if poacher_detected:
+            print("ALERT: Poacher (Person) detected!")
+            from mailer import send_alert_email
+            mail_sent = send_alert_email(output_path)
+    
+        # Save results to JSON
+        results_data = {
+            "status": "completed",
+            "poacher_detected": poacher_detected,
+            "weapon_detected": "Yes" if weapon_detected else "No",
+            "poacher_confidence": round(max_poacher_conf * 100, 1),
+            "weapon_confidence": round(max_weapon_conf * 100, 1),
+            "mail_sent": "Yes" if mail_sent else "No (Check .env)" if poacher_detected else "N/A",
+            "video_url": f"http://localhost:8000/uploads/{os.path.basename(output_path)}",
+            "detections": detections if is_image else [] # Only detailed detections for images for now
+        }
+        
+        with open(json_path, "w") as f:
+            json.dump(results_data, f)
+    
+        print(f"Finished processing. Saved to {output_path}")
 
-    print(f"Finished processing. Saved to {output_path}")
+    except Exception as e:
+        print(f"Error processing video: {e}")
+        with open(json_path, "w") as f:
+            json.dump({"status": "error", "message": str(e)}, f)
 
 
 import time
