@@ -3,8 +3,9 @@ from ultralytics import YOLO
 import os
 
 # Load model globally to avoid reloading (or load inside if memory is concern)
-# Using 'yolov8n.pt' for speed. It will auto-download.
-model = YOLO('yolov8n.pt') 
+# Load model globally to avoid reloading (or load inside if memory is concern)
+# Using 'yolov8m.pt' (Medium) for better accuracy. It will auto-download.
+model = YOLO('yolov8m.pt') 
 
 import json
 

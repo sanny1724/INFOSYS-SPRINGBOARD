@@ -1,0 +1,16 @@
+# data.yaml
+# This file configures the dataset for training your custom model.
+# You need to organize your images into 'train' and 'val' folders.
+
+path: ../dataset  # dataset root dir
+train: images/train  # train images (relative to 'path') 
+val: images/val  # val images (relative to 'path')
+
+# Number of classes
+nc: 3
+
+# Class names
+names:
+  0: Poacher
+  1: Animal
+  2: Weapon
