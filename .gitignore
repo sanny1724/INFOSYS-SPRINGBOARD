@@ -21,13 +21,15 @@ coverage/
 # Wildeye AI
 backend/uploads/
 uploads/
-backend/camera_debug.log
+backend/*.log
 backend/debug_log.txt
 backend/debug_output.txt
 backend/temp_alert_frame.jpg
 backend/*.json
 backend/*.png
 backend/*.jpg
+backend/dataset/
+backend/runs/
 
 # Editor
 .vscode/

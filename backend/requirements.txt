@@ -8,3 +8,7 @@ numpy
 websockets
 watchfiles
 python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+motor
+httpx
