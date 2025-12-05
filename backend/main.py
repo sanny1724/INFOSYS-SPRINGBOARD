@@ -97,7 +97,9 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
 
 @app.on_event("startup")
 async def startup_event():
-    print(">>> BACKEND SERVER ON PORT 8001 STARTED <<<", flush=True)
+    print(">>> BACKEND SERVER ON PORT 8000 STARTED <<<", flush=True)
+    google_redirect = os.getenv("GOOGLE_REDIRECT_URI")
+    print(f"DEBUG: Startup - GOOGLE_REDIRECT_URI: {google_redirect}", flush=True)
 
 # CORS Setup
 app.add_middleware(
