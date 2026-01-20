@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python-headless
+ultralytics
+python-dotenv
+numpy
+websockets
+watchfiles
+python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+motor
+httpx

@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Node
+node_modules/
+dist/
+.DS_Store
+coverage/
+.npm/
+
+# Wildeye AI
+backend/uploads/
+uploads/
+backend/*.log
+backend/debug_log.txt
+backend/debug_output.txt
+backend/temp_alert_frame.jpg
+backend/*.json
+backend/*.png
+backend/*.jpg
+backend/dataset/
+backend/runs/
+
+# Editor
+.vscode/
+.idea/
+
+# Large files
+*.pt
+*.zip
+*.onnx
+
