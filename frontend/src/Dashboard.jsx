@@ -415,7 +415,7 @@ function Dashboard() {
           </div>
 
           {/* History Card */}
-          <div className="card history-card" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div className="card history-card" style={{ flex: 1, minHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '10px', marginBottom: '10px' }}>
               <h3 style={{ margin: 0, border: 'none', padding: 0 }}>Recent Alerts 🕒</h3>
               {history.length > 0 && (

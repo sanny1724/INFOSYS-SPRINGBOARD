@@ -13,7 +13,9 @@ from database import get_database
 from auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from jose import JWTError, jwt
 from datetime import timedelta, datetime
+import secrets
 from dotenv import load_dotenv
+from mailer import send_password_reset_email
 
 load_dotenv()
 
@@ -131,6 +133,52 @@ async def dev_login(db=Depends(get_database)):
 @app.get("/users/me")
 async def read_users_me(current_user: dict = Depends(get_current_user)):
     return current_user
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+@app.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest, background_tasks: BackgroundTasks, db=Depends(get_database)):
+    user = await db.users.find_one({"username": request.email})
+    if not user:
+        # Don't reveal if user exists or not for security, just return success
+        return {"message": "If this email is registered, you will receive a reset link."}
+
+    reset_token = secrets.token_urlsafe(32)
+    reset_token_expires = datetime.now() + timedelta(minutes=30)
+
+    await db.users.update_one(
+        {"username": request.email},
+        {"$set": {"reset_token": reset_token, "reset_token_expires": reset_token_expires}}
+    )
+
+    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+    background_tasks.add_task(send_password_reset_email, request.email, reset_link)
+
+    return {"message": "If this email is registered, you will receive a reset link."}
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+@app.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest, db=Depends(get_database)):
+    user = await db.users.find_one({"reset_token": request.token})
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+        
+    if user.get("reset_token_expires") < datetime.now():
+        raise HTTPException(status_code=400, detail="Token has expired")
+
+    hashed_password = get_password_hash(request.new_password)
+    
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"hashed_password": hashed_password}, "$unset": {"reset_token": "", "reset_token_expires": ""}}
+    )
+    
+    return {"message": "Password reset successfully. You can now login."}
 
 @app.on_event("startup")
 async def startup_event():

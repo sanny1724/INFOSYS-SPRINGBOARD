@@ -221,12 +221,10 @@ def process_video(video_path: str, user_email: str):
             
             maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
             
-            # Prioritize logged-in user's email
+            # Prioritize logged-in user's email, unless it's the dev account
             recipient = user_email
-            
-            # Simple validation
-            if "@" not in recipient:
-                print(f"Warning: User '{recipient}' does not look like an email. Falling back to MAIL_RECIPIENT.")
+            if recipient == "ranger_dev@wildeye.ai" or "@" not in recipient:
+                print(f"DEBUG: Using fallback email (Dev User or Invalid): {recipient}")
                 recipient = os.getenv("MAIL_RECIPIENT")
             
             if recipient:
@@ -330,7 +328,7 @@ def process_frame(image_bytes, user_email: str):
 
     if (poacher_detected or weapon_detected) and (time_diff > EMAIL_COOLDOWN):
         print("DEBUG: Condition met! Attempting to send email...")
-        temp_path = "temp_alert_frame.jpg"
+        temp_path = os.path.abspath("temp_alert_frame.jpg")
         cv2.imwrite(temp_path, frame)
         subject = "EcoEye Alert: Poacher/Weapon Detected (Live)"
         
@@ -353,12 +351,10 @@ def process_frame(image_bytes, user_email: str):
         
         body = f"Alert! Detection in live feed.\nPoacher: {poacher_detected}\nWeapon: {weapon_detected}"
         
-        # Prioritize logged-in user's email
+        # Prioritize logged-in user's email, unless it's the dev account
         recipient = user_email
-
-        # Simple validation
-        if "@" not in recipient:
-            print(f"Warning: User '{recipient}' does not look like an email. Falling back to MAIL_RECIPIENT.")
+        if recipient == "ranger_dev@wildeye.ai" or "@" not in recipient:
+            print(f"DEBUG: Using fallback email (Dev User or Invalid): {recipient}")
             recipient = os.getenv("MAIL_RECIPIENT")
 
         if recipient:

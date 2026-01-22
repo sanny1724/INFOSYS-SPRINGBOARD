@@ -3,6 +3,8 @@ import Dashboard from './Dashboard';
 import Login from './Login';
 import Signup from './Signup';
 import Profile from './Profile';
+import ForgotPassword from './ForgotPassword';
+import ResetPassword from './ResetPassword';
 import './index.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -19,6 +21,8 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/profile"
           element={
