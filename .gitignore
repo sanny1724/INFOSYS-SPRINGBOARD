@@ -37,7 +37,10 @@ backend/runs/
 .idea/
 
 # Large files
-*.pt
 *.zip
 *.onnx
+
+# Allow only specifically needed models
+*.pt
+!backend/models/best.pt
 
