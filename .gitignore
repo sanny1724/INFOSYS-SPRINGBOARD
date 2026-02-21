@@ -30,7 +30,7 @@ backend/*.png
 backend/*.jpg
 backend/dataset/
 backend/runs/
-!backend/runs/detect/train2/weights/best.pt
+!backend/models/best.pt
 
 # Editor
 .vscode/
