@@ -10,7 +10,7 @@ load_dotenv()
 print("=== SYSTEM DIAGNOSTIC ===")
 
 # 1. Check Model
-model_path = os.path.join(os.path.dirname(__file__), "runs", "detect", "train2", "weights", "best.pt")
+model_path = os.path.join(os.path.dirname(__file__), "models", "best.pt")
 print(f"\n[1] Checking Model at: {model_path}")
 if os.path.exists(model_path):
     print("    -> File exists.")

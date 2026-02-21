@@ -10,25 +10,14 @@ from datetime import datetime
 import random
 
 # Load the TRAINED model
-# Dynamically find the latest run
-import glob
+# In production, we use a static path to the unignored model file
+model_path = os.path.join(os.path.dirname(__file__), "models", "best.pt")
 
-# Base runs directory
-runs_dir = os.path.join(os.path.dirname(__file__), "runs", "detect")
-# Find all train folders
-train_dirs = glob.glob(os.path.join(runs_dir, "train*"))
-# Sort by modification time (newest last)
-train_dirs.sort(key=os.path.getmtime)
+if not os.path.exists(model_path):
+    # Fallback for local dev if models folder isn't populated
+    model_path = os.path.join(os.path.dirname(__file__), "runs", "detect", "train2", "weights", "best.pt")
 
-if train_dirs:
-    latest_run = train_dirs[-1]
-    # Use last.pt because best.pt might not have updated if validation didn't improve, but last.pt has the latest epoch
-    model_path = os.path.join(latest_run, "weights", "last.pt")
-    print(f"Loading LATEST model from: {model_path}")
-else:
-    # Fallback to a known training run
-    model_path = os.path.join(runs_dir, "train2", "weights", "best.pt")
-    print(f"No new runs found. Loading default fallback: {model_path}")
+print(f"Loading model from: {model_path}")
 
 model = YOLO(model_path)
 
