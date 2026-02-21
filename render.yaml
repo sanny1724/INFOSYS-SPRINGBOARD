@@ -9,3 +9,11 @@ services:
         value: 3.11.0
       - key: MONGO_URL
         sync: false
+      - key: FRONTEND_URL
+        value: "https://your-app-name.onrender.com"
+      - key: BACKEND_URL
+        value: "https://your-app-name.onrender.com"
+      - key: GOOGLE_REDIRECT_URI
+        value: "https://your-app-name.onrender.com/callback/google"
+      - key: GITHUB_REDIRECT_URI
+        value: "https://your-app-name.onrender.com/callback/github"

@@ -21,6 +21,10 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
+# Environment Variables for Production
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 class UserCreate(BaseModel):
@@ -152,7 +156,7 @@ async def forgot_password(request: ForgotPasswordRequest, background_tasks: Back
         {"$set": {"reset_token": reset_token, "reset_token_expires": reset_token_expires}}
     )
 
-    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+    reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
     background_tasks.add_task(send_password_reset_email, request.email, reset_link)
 
     return {"message": "If this email is registered, you will receive a reset link."}
@@ -187,9 +191,15 @@ async def startup_event():
     print(f"DEBUG: Startup - GOOGLE_REDIRECT_URI: {google_redirect}", flush=True)
 
 # CORS Setup
+origins = [
+    FRONTEND_URL,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -212,6 +222,18 @@ async def serve_frontend():
     if os.path.exists("../frontend/dist/index.html"):
         return FileResponse("../frontend/dist/index.html")
     return {"error": "Frontend not built. Run 'npm run build' in frontend directory."}
+
+# Catch-all route for React Router
+@app.get("/{path:path}")
+async def catch_all(path: str):
+    # Only redirect if it's not an API call or static file
+    if path.startswith("api/") or path.startswith("auth/") or path.startswith("uploads/") or path.startswith("ws/"):
+        raise HTTPException(status_code=404, detail="Not Found")
+    
+    index_path = "../frontend/dist/index.html"
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"error": "Frontend not built."}
 
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...), background_tasks: BackgroundTasks = None, current_user: dict = Depends(get_current_user)):
@@ -366,7 +388,7 @@ async def callback_google(code: str, db=Depends(get_database)):
         print(f"DEBUG: Generated Token for {email}: {access_token[:20]}...", flush=True)
 
         # Redirect to frontend with token
-        frontend_url = f"http://localhost:5173/login?token={access_token}"
+        frontend_url = f"{FRONTEND_URL}/login?token={access_token}"
         return RedirectResponse(url=frontend_url)
 
 @app.post("/users/me/avatar")
@@ -381,7 +403,7 @@ async def upload_avatar(file: UploadFile = File(...), current_user: dict = Depen
             shutil.copyfileobj(file.file, file_object)
             
         # URL for the uploaded avatar
-        avatar_url = f"http://localhost:8000/uploads/{filename}"
+        avatar_url = f"{BACKEND_URL}/uploads/{filename}"
         
         # Update user in DB
         await db.users.update_one(
@@ -432,4 +454,4 @@ async def callback_github(code: str, db=Depends(get_database)):
             data={"sub": username}, expires_delta=access_token_expires
         )
         
-        return {"access_token": access_token, "token_type": "bearer", "redirect": f"http://localhost:5173/login?token={access_token}"}
+        return {"access_token": access_token, "token_type": "bearer", "redirect": f"{FRONTEND_URL}/login?token={access_token}"}

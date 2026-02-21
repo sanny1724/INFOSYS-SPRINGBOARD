@@ -26,9 +26,9 @@ if train_dirs:
     model_path = os.path.join(latest_run, "weights", "last.pt")
     print(f"Loading LATEST model from: {model_path}")
 else:
-    # Fallback
-    model_path = r"C:\Users\sravs\.gemini\antigravity\scratch\wildeye_ai\backend\runs\detect\train2\weights\best.pt"
-    print(f"No new runs found. Loading default: {model_path}")
+    # Fallback to a known training run
+    model_path = os.path.join(runs_dir, "train2", "weights", "best.pt")
+    print(f"No new runs found. Loading default fallback: {model_path}")
 
 model = YOLO(model_path)
 
