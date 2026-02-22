@@ -16,7 +16,17 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(BASE_DIR, "best.pt")
 
 print(f"DEBUG: Loading model from: {model_path}")
-model = YOLO(model_path)
+model = None
+model_error = None
+try:
+    if os.path.exists(model_path):
+        model = YOLO(model_path)
+    else:
+        model_error = f"Model file not found at {model_path}"
+        print(f"ERROR: {model_error}")
+except Exception as e:
+    model_error = str(e)
+    print(f"ERROR: Failed to load YOLO model: {e}")
 
 # Global variable for rate limiting
 last_email_time = 0
@@ -44,9 +54,10 @@ def process_video(video_path: str, user_email: str):
                 raise Exception(f"Could not open image file: {video_path}")
             
             annotated_frame = frame.copy()
-            results = model(frame, conf=0.15)
+            results = model(frame, conf=0.15) if model else []
             
-            for box in results[0].boxes:
+            if model and len(results) > 0:
+                for box in results[0].boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 cls = int(box.cls[0])
                 conf = float(box.conf[0])
@@ -83,12 +94,13 @@ def process_video(video_path: str, user_email: str):
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret: break
-                results = model(frame, conf=0.25)
-                out.write(results[0].plot())
-                for box in results[0].boxes:
-                    cls, conf = int(box.cls[0]), float(box.conf[0])
-                    if cls == 0: poacher_detected, max_poacher_conf = True, max(max_poacher_conf, conf)
-                    if cls in [2, 3]: weapon_detected, max_weapon_conf = True, max(max_weapon_conf, conf)
+                results = model(frame, conf=0.25) if model else []
+                if model and len(results) > 0:
+                    out.write(results[0].plot())
+                    for box in results[0].boxes:
+                        cls, conf = int(box.cls[0]), float(box.conf[0])
+                        if cls == 0: poacher_detected, max_poacher_conf = True, max(max_poacher_conf, conf)
+                        if cls in [2, 3]: weapon_detected, max_weapon_conf = True, max(max_weapon_conf, conf)
             cap.release(); out.release()
             
         mail_sent = False
@@ -119,11 +131,12 @@ def process_frame(image_bytes, user_email: str):
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if frame is None: return {"error": "Could not decode image"}
     
-    results = model(frame, conf=0.15)
+    results = model(frame, conf=0.15) if model else None
     detections, poacher_detected, weapon_detected = [], False, False
     max_poacher_conf, max_weapon_conf = 0.0, 0.0
     
-    for box in results[0].boxes:
+    if results and len(results) > 0:
+        for box in results[0].boxes:
         x1, y1, x2, y2 = map(int, box.xyxy[0])
         cls, conf = int(box.cls[0]), float(box.conf[0])
         label, color, valid = model.names[cls], (255, 255, 255), False

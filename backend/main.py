@@ -38,9 +38,11 @@ async def health_check(db=Depends(get_database)):
     
     return {
         "status": "ok",
-        "version": "2.0",
+        "version": "2.1",
         "database": db_status,
-        "model_file": "exists" if model_exists else "missing",
+        "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
+        "model_loaded": detector.model is not None,
+        "model_error": detector.model_error,
         "model_path": detector.model_path,
         "cwd": os.getcwd()
     }
