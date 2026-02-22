@@ -11,6 +11,7 @@ import random
 from pathlib import Path
 
 # Load the TRAINED model
+print(">>> VERSION 2.0 - DETECTOR LOADING <<<", flush=True)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(BASE_DIR, "best.pt")
 

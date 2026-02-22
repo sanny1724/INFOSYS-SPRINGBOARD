@@ -23,6 +23,7 @@ function Signup() {
         setError('');
 
         try {
+            console.log("Attempting signup at /auth/register with:", { username });
             const response = await fetch('/auth/register', {
                 method: 'POST',
                 headers: {

@@ -21,6 +21,30 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
+print(">>> VERSION 2.0 - BACKEND STARTUP <<<", flush=True)
+print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
+
+@app.get("/api/health")
+async def health_check(db=Depends(get_database)):
+    try:
+        # Check DB connection
+        await db.command("ping")
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    # Check Model
+    model_exists = os.path.exists(detector.model_path)
+    
+    return {
+        "status": "ok",
+        "version": "2.0",
+        "database": db_status,
+        "model_file": "exists" if model_exists else "missing",
+        "model_path": detector.model_path,
+        "cwd": os.getcwd()
+    }
+
 # Environment Variables for Production
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
