@@ -21,7 +21,7 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
-print(">>> VERSION 2.7 - BACKEND STARTUP <<<", flush=True)
+print(">>> VERSION 2.8 - BACKEND STARTUP <<<", flush=True)
 print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
 
 # Keep uploads inside backend for simpler pathing on Render
@@ -497,22 +497,36 @@ if os.path.exists("../frontend/dist"):
     app.mount("/assets", StaticFiles(directory="../frontend/dist/assets"), name="assets")
 
 @app.get("/")
-async def serve_frontend():
-    if os.path.exists("../frontend/dist/index.html"):
-        return FileResponse("../frontend/dist/index.html")
-    return {"error": "Frontend not built. Run 'npm run build' in frontend directory."}
+async def root_heartbeat():
+    return {"status": "alive", "version": "2.8", "note": "Frontend mount temporarily disabled for diagnostics"}
 
-# Catch-all route for React Router
-@app.get("/{path:path}")
-async def catch_all(path: str):
-    # Only redirect if it's not an API call or static file
-    if any(path.startswith(p) for p in ["api/", "auth/", "uploads/", "ws/", "upload", "results/", "detect_frame"]):
-        raise HTTPException(status_code=404, detail="Not Found")
-    
-    index_path = "../frontend/dist/index.html"
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"error": "Frontend not built."}
+@app.get("/api/health")
+async def health_check():
+    # Diagnostic health check that doesn't block on dependencies
+    db_status = "unknown"
+    try:
+        from database import db
+        await db.command("ping")
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"failed: {str(e)}"
+
+    m, err = detector.get_model() if hasattr(detector, 'get_model') else (None, "detector.get_model missing")
+
+    return {
+        "status": "ok",
+        "version": "2.8",
+        "database": db_status,
+        "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
+        "model_loaded": m is not None,
+        "model_error": err or detector.model_error,
+        "cwd": os.getcwd()
+    }
+
+# Temporarily disabled catch_all to see if server starts
+# @app.get("/{path:path}")
+# async def catch_all(path: str):
+#     ...
 
 import uvicorn
 if __name__ == "__main__":
