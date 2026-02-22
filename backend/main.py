@@ -21,7 +21,7 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
-print(">>> VERSION 2.6 - BACKEND STARTUP <<<", flush=True)
+print(">>> VERSION 2.7 - BACKEND STARTUP <<<", flush=True)
 print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
 
 # Keep uploads inside backend for simpler pathing on Render
@@ -47,7 +47,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "2.6",
+        "version": "2.7",
         "database": db_status,
         "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
         "model_loaded": m is not None,

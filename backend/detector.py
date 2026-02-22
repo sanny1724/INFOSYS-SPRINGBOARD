@@ -1,5 +1,5 @@
 import cv2
-from ultralytics import YOLO
+# from ultralytics import YOLO # Moved inside get_model to prevent startup hangs
 import os
 import json
 import time
@@ -26,6 +26,7 @@ def get_model():
     
     print(f"DEBUG: Lazy Loading model from: {model_path}", flush=True)
     try:
+        from ultralytics import YOLO # Heavy import moved here
         if os.path.exists(model_path):
             model = YOLO(model_path)
             print(">>> SUCCESS: YOLO model loaded <<<", flush=True)
