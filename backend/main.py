@@ -21,8 +21,11 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
-print(">>> VERSION 2.3 - BACKEND STARTUP <<<", flush=True)
+print(">>> VERSION 2.4 - BACKEND STARTUP <<<", flush=True)
 print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
+
+UPLOAD_DIR = "../uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/api/health")
 async def health_check():
@@ -38,14 +41,15 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "2.3",
+        "version": "2.4",
         "database": db_status,
         "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
         "model_loaded": detector.model is not None,
         "model_error": detector.model_error,
         "model_path": detector.model_path,
         "cwd": os.getcwd(),
-        "uploads_dir_exists": os.path.exists(UPLOAD_DIR) if 'UPLOAD_DIR' in globals() else False
+        "uploads_dir": UPLOAD_DIR,
+        "uploads_dir_exists": os.path.exists(UPLOAD_DIR)
     }
 
 # Environment Variables for Production
@@ -483,6 +487,11 @@ async def callback_github(code: str, db=Depends(get_database)):
         
         return {"access_token": access_token, "token_type": "bearer", "redirect": f"{FRONTEND_URL}/login?token={access_token}"}
 
+# Serve Static Files
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+if os.path.exists("../frontend/dist"):
+    app.mount("/assets", StaticFiles(directory="../frontend/dist/assets"), name="assets")
+
 @app.get("/")
 async def serve_frontend():
     if os.path.exists("../frontend/dist/index.html"):
@@ -493,7 +502,6 @@ async def serve_frontend():
 @app.get("/{path:path}")
 async def catch_all(path: str):
     # Only redirect if it's not an API call or static file
-    # We exclude /upload and /results explicitly too
     if any(path.startswith(p) for p in ["api/", "auth/", "uploads/", "ws/", "upload", "results/", "detect_frame"]):
         raise HTTPException(status_code=404, detail="Not Found")
     
