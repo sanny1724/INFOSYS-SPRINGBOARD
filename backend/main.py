@@ -21,20 +21,20 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
-print(">>> VERSION 2.8 - BACKEND STARTUP <<<", flush=True)
+print(">>> VERSION 2.9 - BACKEND STARTUP <<<", flush=True)
 print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
 
-# Keep uploads inside backend for simpler pathing on Render
-UPLOAD_DIR = "uploads"
+# Important: Use absolute path for consistency
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/ping")
 async def ping():
-    return {"pong": "version 2.6"}
+    return {"pong": "version 2.9"}
 
 @app.get("/api/health")
 async def health_check():
-    # Diagnostic health check that doesn't block on dependencies
     db_status = "unknown"
     try:
         from database import db
@@ -47,7 +47,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "2.7",
+        "version": "2.9",
         "database": db_status,
         "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
         "model_loaded": m is not None,
@@ -272,21 +272,26 @@ if os.path.exists("../frontend/dist"):
 
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...), background_tasks: BackgroundTasks = None, current_user: dict = Depends(get_current_user)):
-    print(f"DEBUG: Upload request received. Filename: '{file.filename}'", flush=True)
-    file_location = f"{UPLOAD_DIR}/{file.filename}"
-    print(f"DEBUG: Saving to {file_location}", flush=True)
+    print(f"DEBUG: Upload received: {file.filename}", flush=True)
+    file_location = os.path.join(UPLOAD_DIR, file.filename)
+    
     with open(file_location, "wb+") as file_object:
         shutil.copyfileobj(file.file, file_object)
-    print(f"DEBUG: File saved. Size: {os.path.getsize(file_location)} bytes", flush=True)
     
-    # Trigger processing in background
+    # Process images SYNC to avoid OOM killer for background threads
+    is_image = file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp'))
+    if is_image:
+        print(f"DEBUG: Processing IMAGE SYNC: {file_location}", flush=True)
+        detector.process_video(file_location, current_user["username"])
+        return {"info": f"file processed", "status": "completed", "filename": file.filename}
+    
+    # Process videos in background
     if background_tasks:
-        print(f"DEBUG: Adding background task for {file_location}", flush=True)
+        print(f"DEBUG: Background task for VIDEO: {file_location}", flush=True)
         background_tasks.add_task(detector.process_video, file_location, current_user["username"])
-    else:
-        print("ERROR: No background_tasks object!", flush=True)
-        
-    return {"info": f"file '{file.filename}' saved at '{file_location}'", "status": "processing_started"}
+        return {"info": f"video queued", "status": "processing_started"}
+    
+    return {"info": "error", "error": "No background task handler"}
 
 @app.get("/results/{filename}")
 async def get_results(filename: str):
@@ -493,40 +498,29 @@ async def callback_github(code: str, db=Depends(get_database)):
 
 # Serve Static Files
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
 if os.path.exists("../frontend/dist"):
     app.mount("/assets", StaticFiles(directory="../frontend/dist/assets"), name="assets")
+    
+    @app.get("/")
+    async def serve_frontend():
+        if os.path.exists("../frontend/dist/index.html"):
+            return FileResponse("../frontend/dist/index.html")
+        return {"error": "Frontend not built."}
 
-@app.get("/")
-async def root_heartbeat():
-    return {"status": "alive", "version": "2.8", "note": "Frontend mount temporarily disabled for diagnostics"}
-
-@app.get("/api/health")
-async def health_check():
-    # Diagnostic health check that doesn't block on dependencies
-    db_status = "unknown"
-    try:
-        from database import db
-        await db.command("ping")
-        db_status = "connected"
-    except Exception as e:
-        db_status = f"failed: {str(e)}"
-
-    m, err = detector.get_model() if hasattr(detector, 'get_model') else (None, "detector.get_model missing")
-
-    return {
-        "status": "ok",
-        "version": "2.8",
-        "database": db_status,
-        "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
-        "model_loaded": m is not None,
-        "model_error": err or detector.model_error,
-        "cwd": os.getcwd()
-    }
-
-# Temporarily disabled catch_all to see if server starts
-# @app.get("/{path:path}")
-# async def catch_all(path: str):
-#     ...
+    @app.get("/{path:path}")
+    async def catch_all(path: str):
+        if any(path.startswith(p) for p in ["api/", "auth/", "uploads/", "ws/", "upload", "results/", "detect_frame", "ping"]):
+            raise HTTPException(status_code=404, detail="Not Found")
+        
+        index_path = "../frontend/dist/index.html"
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return {"error": "Frontend dist missing."}
+else:
+    @app.get("/")
+    async def root_fallback():
+        return {"status": "ok", "version": "2.9", "note": "Frontend dist folder not found"}
 
 import uvicorn
 if __name__ == "__main__":

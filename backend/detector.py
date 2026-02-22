@@ -106,10 +106,10 @@ def process_video(video_path: str, user_email: str):
             width, height, fps = int(cap.get(3)), int(cap.get(4)), int(cap.get(5))
             out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
             
+            m, _ = get_model()
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret: break
-                m, _ = get_model()
                 results = m(frame, conf=0.25) if m else []
                 if m and len(results) > 0:
                     out.write(results[0].plot())
