@@ -120,7 +120,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_d
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user = await db.users.find_one({"username": username})
+    try:
+        user = await db.users.find_one({"username": username})
+    except Exception as e:
+        print(f"DATABASE ERROR in get_current_user: {e}", flush=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection failed (Timeout). Please check your MongoDB Atlas Whitelist.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
     if user is None:
         print(f"DEBUG: User {username} not found in DB", flush=True)
         raise HTTPException(
@@ -142,7 +151,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_d
 async def dev_login(db=Depends(get_database)):
     # Create or get dev user
     email = "ranger_dev@wildeye.ai"
-    user = await db.users.find_one({"username": email})
+    try:
+        user = await db.users.find_one({"username": email})
+    except Exception as e:
+        print(f"DATABASE ERROR in dev_login: {e}", flush=True)
+        raise HTTPException(
+             status_code=503, 
+             detail="Database connection failed (Timeout). Check Network Access in Atlas."
+        )
     if not user:
         user_dict = {
             "username": email, 

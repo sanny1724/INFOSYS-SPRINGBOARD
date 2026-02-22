@@ -10,7 +10,14 @@ MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = "ecoeye_db"
 
 # Use certifi for TLS certificates (Required for some environments like Render)
-client = AsyncIOMotorClient(MONGO_URL, tlsCAFile=certifi.where())
+# Added timeouts to avoid long hangs on "Processing..."
+client = AsyncIOMotorClient(
+    MONGO_URL, 
+    tlsCAFile=certifi.where(),
+    tls=True,
+    serverSelectionTimeoutMS=5000, 
+    connectTimeoutMS=5000
+)
 db = client[DB_NAME]
 
 async def get_database():
