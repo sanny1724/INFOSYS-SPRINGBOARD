@@ -21,7 +21,7 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
-print(">>> VERSION 2.9 - BACKEND STARTUP <<<", flush=True)
+print(">>> VERSION 3.0 - BACKEND STARTUP <<<", flush=True)
 print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
 
 # Important: Use absolute path for consistency
@@ -31,7 +31,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/ping")
 async def ping():
-    return {"pong": "version 2.9"}
+    return {"pong": "version 3.0"}
 
 @app.get("/api/health")
 async def health_check():
@@ -47,7 +47,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "2.9",
+        "version": "3.0",
         "database": db_status,
         "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
         "model_loaded": m is not None,
@@ -65,6 +65,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 class UserCreate(BaseModel):
     username: str
     password: str
+
+    @validator('password')
+    def password_length_limit(cls, v):
+        if len(v) > 72:
+            raise ValueError('Password cannot be longer than 72 characters due to security limits')
+        return v
 
     @validator('username')
     def username_must_be_email(cls, v):

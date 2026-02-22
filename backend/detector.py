@@ -68,8 +68,11 @@ def process_video(video_path: str, user_email: str):
                 raise Exception(f"Could not open image file: {video_path}")
             
             annotated_frame = frame.copy()
+            t_start = time.time()
             m, _ = get_model()
-            results = m(frame, conf=0.15) if m else []
+            results = m(frame, conf=0.15, imgsz=480) if m else []
+            t_inference = time.time() - t_start
+            print(f"DEBUG: Inference took {t_inference:.2f}s (imgsz=480)", flush=True)
             
             if m and len(results) > 0:
                 for box in results[0].boxes:
@@ -110,7 +113,7 @@ def process_video(video_path: str, user_email: str):
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret: break
-                results = m(frame, conf=0.25) if m else []
+                results = m(frame, conf=0.25, imgsz=480) if m else []
                 if m and len(results) > 0:
                     out.write(results[0].plot())
                     for box in results[0].boxes:
@@ -147,8 +150,11 @@ def process_frame(image_bytes, user_email: str):
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if frame is None: return {"error": "Could not decode image"}
     
+    t_start = time.time()
     m, _ = get_model()
-    results = m(frame, conf=0.15) if m else None
+    results = m(frame, conf=0.15, imgsz=480) if m else None
+    t_inference = time.time() - t_start
+    print(f"DEBUG: Frame Inference took {t_inference:.2f}s", flush=True)
     detections, poacher_detected, weapon_detected = [], False, False
     max_poacher_conf, max_weapon_conf = 0.0, 0.0
     
