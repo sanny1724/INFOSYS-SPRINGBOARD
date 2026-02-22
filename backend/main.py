@@ -21,11 +21,16 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
-print(">>> VERSION 2.5 - BACKEND STARTUP <<<", flush=True)
+print(">>> VERSION 2.6 - BACKEND STARTUP <<<", flush=True)
 print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
 
-UPLOAD_DIR = "../uploads"
+# Keep uploads inside backend for simpler pathing on Render
+UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@app.get("/ping")
+async def ping():
+    return {"pong": "version 2.6"}
 
 @app.get("/api/health")
 async def health_check():
@@ -38,17 +43,15 @@ async def health_check():
     except Exception as e:
         db_status = f"failed: {str(e)}"
 
-    # Check model via the new lazy loader status
     m, err = detector.get_model() if hasattr(detector, 'get_model') else (None, "detector.get_model missing")
 
     return {
         "status": "ok",
-        "version": "2.5",
+        "version": "2.6",
         "database": db_status,
         "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
         "model_loaded": m is not None,
         "model_error": err or detector.model_error,
-        "model_path": detector.model_path,
         "cwd": os.getcwd(),
         "uploads_dir": UPLOAD_DIR
     }
