@@ -12,3 +12,5 @@ passlib[bcrypt]
 python-jose[cryptography]
 motor
 httpx
+dnspython
+certifi
