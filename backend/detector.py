@@ -10,23 +10,36 @@ from datetime import datetime
 import random
 from pathlib import Path
 
-# Load the TRAINED model
-print(">>> VERSION 2.0 - DETECTOR LOADING <<<", flush=True)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-model_path = os.path.join(BASE_DIR, "best.pt")
-
-print(f"DEBUG: Loading model from: {model_path}")
+# Global model variables
 model = None
 model_error = None
-try:
-    if os.path.exists(model_path):
-        model = YOLO(model_path)
-    else:
-        model_error = f"Model file not found at {model_path}"
-        print(f"ERROR: {model_error}")
-except Exception as e:
-    model_error = str(e)
-    print(f"ERROR: Failed to load YOLO model: {e}")
+detector_initialized = False
+
+def get_model():
+    global model, model_error, detector_initialized
+    if detector_initialized:
+        return model, model_error
+    
+    detector_initialized = True
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(BASE_DIR, "best.pt")
+    
+    print(f"DEBUG: Lazy Loading model from: {model_path}", flush=True)
+    try:
+        if os.path.exists(model_path):
+            model = YOLO(model_path)
+            print(">>> SUCCESS: YOLO model loaded <<<", flush=True)
+        else:
+            model_error = f"Model file not found at {model_path}"
+            print(f"ERROR: {model_error}", flush=True)
+    except Exception as e:
+        model_error = str(e)
+        print(f"ERROR: Failed to load YOLO model: {e}", flush=True)
+    
+    return model, model_error
+
+# For backward compatibility if needed at the top level
+model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "best.pt")
 
 # Global variable for rate limiting
 last_email_time = 0
