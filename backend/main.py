@@ -21,7 +21,7 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
-print(">>> VERSION 3.2 - BACKEND STARTUP (FORCED CACHE REFRESH) <<<", flush=True)
+print(">>> VERSION 3.3 - BACKEND STARTUP (AUTHENTICATION & ANALYSIS FIX) <<<", flush=True)
 print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
 
 # Important: Use absolute path for consistency
@@ -31,7 +31,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/ping")
 async def ping():
-    return {"pong": "version 3.2"}
+    return {"pong": "version 3.3"}
 
 @app.get("/api/health")
 async def health_check():
@@ -47,7 +47,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "3.2",
+        "version": "3.3",
         "database": db_status,
         "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
         "model_loaded": m is not None,
@@ -522,7 +522,7 @@ if os.path.exists("../frontend/dist"):
 else:
     @app.get("/")
     async def root_fallback():
-        return {"status": "ok", "version": "3.2", "note": "Frontend dist folder not found"}
+        return {"status": "ok", "version": "3.3", "note": "Frontend dist folder not found"}
 
 import uvicorn
 if __name__ == "__main__":

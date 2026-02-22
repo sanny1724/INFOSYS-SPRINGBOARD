@@ -47,7 +47,7 @@ last_email_time = 0
 EMAIL_COOLDOWN = 60 # Seconds
 
 def process_video(video_path: str, user_email: str):
-    print(f"DEBUG: process_video STARTED for {video_path}", flush=True)
+    print(f"DEBUG [v3.3]: process_video STARTED for {video_path}", flush=True)
     video_path = os.path.abspath(video_path)
     filename = os.path.basename(video_path)
     is_image = filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp'))
@@ -70,38 +70,55 @@ def process_video(video_path: str, user_email: str):
             annotated_frame = frame.copy()
             t_start = time.time()
             m, _ = get_model()
-            results = m(frame, conf=0.15, imgsz=480) if m else []
-            t_inference = time.time() - t_start
-            print(f"DEBUG: Inference took {t_inference:.2f}s (imgsz=480)", flush=True)
             
-            if m and len(results) > 0:
-                for box in results[0].boxes:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    cls = int(box.cls[0])
-                    conf = float(box.conf[0])
-                    label = m.names[cls]
-                    color = (255, 255, 255)
-                    
-                    valid = False
-                    if cls == 0 and conf > 0.15: # Poacher
-                        label, color, valid, poacher_detected = "Poacher", (0, 0, 255), True, True
-                        max_poacher_conf = max(max_poacher_conf, conf)
-                    elif cls == 1 and conf > 0.35: # Ranger
-                        label, color, valid = "Ranger", (0, 255, 0), True
-                    elif cls == 2 and conf > 0.15: # Weapon
-                        label, color, valid, weapon_detected = "Weapon", (0, 0, 255), True, True
-                        max_weapon_conf = max(max_weapon_conf, conf)
-                    elif cls == 3 and conf > 0.15: # WW
-                        label, color, valid, weapon_detected = "WW", (0, 165, 255), True, True
-                        max_weapon_conf = max(max_weapon_conf, conf)
-                    
-                    if valid:
-                        detections.append({"box": [x1, y1, x2, y2], "class_id": cls, "label": label, "confidence": conf})
-                        cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
-                        cv2.putText(annotated_frame, f"{label} {int(conf*100)}%", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+            if m is None:
+                print("DEBUG: Model is None, skipping analysis", flush=True)
+                results = []
+            else:
+                results = m(frame, conf=0.15, imgsz=480)
+                t_inference = time.time() - t_start
+                print(f"DEBUG: Inference took {t_inference:.2f}s (imgsz=480)", flush=True)
+            
+            # Robust check for results
+            if m and results and len(results) > 0 and results[0] is not None:
+                res = results[0]
+                # Check for boxes safely
+                if hasattr(res, 'boxes') and res.boxes is not None:
+                    print(f"DEBUG: Processing {len(res.boxes)} found boxes", flush=True)
+                    for box in res.boxes:
+                        # ULTRA DEFENSIVE: Check if xyxy exists and has data
+                        if not hasattr(box, 'xyxy') or box.xyxy is None or len(box.xyxy) == 0:
+                            continue
+                            
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        cls = int(box.cls[0]) if (hasattr(box, 'cls') and box.cls is not None and len(box.cls) > 0) else 0
+                        conf = float(box.conf[0]) if (hasattr(box, 'conf') and box.conf is not None and len(box.conf) > 0) else 0.0
+                        
+                        label_names = getattr(m, 'names', {})
+                        label = label_names.get(cls, f"Object {cls}")
+                        color = (255, 255, 255)
+                        
+                        valid = False
+                        if cls == 0 and conf > 0.15: # Poacher
+                            label, color, valid, poacher_detected = "Poacher", (0, 0, 255), True, True
+                            max_poacher_conf = max(max_poacher_conf, conf)
+                        elif cls == 1 and conf > 0.35: # Ranger
+                            label, color, valid = "Ranger", (0, 255, 0), True
+                        elif cls == 2 and conf > 0.15: # Weapon
+                            label, color, valid, weapon_detected = "Weapon", (0, 0, 255), True, True
+                            max_weapon_conf = max(max_weapon_conf, conf)
+                        elif cls == 3 and conf > 0.15: # WW
+                            label, color, valid, weapon_detected = "WW", (0, 165, 255), True, True
+                            max_weapon_conf = max(max_weapon_conf, conf)
+                        
+                        if valid:
+                            detections.append({"box": [x1, y1, x2, y2], "class_id": cls, "label": label, "confidence": conf})
+                            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
+                            cv2.putText(annotated_frame, f"{label} {int(conf*100)}%", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
             
             cv2.imwrite(output_path, annotated_frame)
         else:
+            # Video Branch also needs guards
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
                 raise Exception("Error opening video file")
@@ -113,18 +130,26 @@ def process_video(video_path: str, user_email: str):
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret: break
-                results = m(frame, conf=0.25, imgsz=480) if m else []
-                if m and len(results) > 0:
+                
+                if m is None:
+                    out.write(frame); continue
+                    
+                results = m(frame, conf=0.25, imgsz=480)
+                if results and len(results) > 0 and results[0] is not None:
                     out.write(results[0].plot())
-                    for box in results[0].boxes:
-                        cls, conf = int(box.cls[0]), float(box.conf[0])
-                        if cls == 0: poacher_detected, max_poacher_conf = True, max(max_poacher_conf, conf)
-                        if cls in [2, 3]: weapon_detected, max_weapon_conf = True, max(max_weapon_conf, conf)
+                    if hasattr(results[0], 'boxes') and results[0].boxes is not None:
+                        for box in results[0].boxes:
+                            if not hasattr(box, 'cls') or box.cls is None or len(box.cls) == 0: continue
+                            cls, conf = int(box.cls[0]), float(box.conf[0])
+                            if cls == 0: poacher_detected, max_poacher_conf = True, max(max_poacher_conf, conf)
+                            if cls in [2, 3]: weapon_detected, max_weapon_conf = True, max(max_weapon_conf, conf)
+                else:
+                    out.write(frame)
             cap.release(); out.release()
             
         mail_sent = False
         if poacher_detected or weapon_detected:
-            recipient = user_email if "@" in user_email and user_email != "ranger_dev@wildeye.ai" else os.getenv("MAIL_RECIPIENT")
+            recipient = user_email if (user_email and "@" in user_email and user_email != "ranger_dev@wildeye.ai") else os.getenv("MAIL_RECIPIENT")
             if recipient:
                 mail_sent = send_alert_email(output_path, recipient)
                 
@@ -141,57 +166,79 @@ def process_video(video_path: str, user_email: str):
         }
         with open(json_path, "w") as f: json.dump(results_data, f)
     except Exception as e:
-        print(f"Error: {e}")
-        with open(json_path, "w") as f: json.dump({"status": "error", "message": str(e)}, f)
+        print(f"Error in process_video: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        with open(json_path, "w") as f: json.dump({"status": "error", "message": f"Analysis crashed: {str(e)}"}, f)
 
 def process_frame(image_bytes, user_email: str):
     global last_email_time
-    nparr = np.frombuffer(image_bytes, np.uint8)
-    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    if frame is None: return {"error": "Could not decode image"}
-    
-    t_start = time.time()
-    m, _ = get_model()
-    results = m(frame, conf=0.15, imgsz=480) if m else None
-    t_inference = time.time() - t_start
-    print(f"DEBUG: Frame Inference took {t_inference:.2f}s", flush=True)
-    detections, poacher_detected, weapon_detected = [], False, False
-    max_poacher_conf, max_weapon_conf = 0.0, 0.0
-    
-    if results and len(results) > 0:
-        for box in results[0].boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            cls, conf = int(box.cls[0]), float(box.conf[0])
-            label, color, valid = m.names[cls], (255, 255, 255), False
+    try:
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if frame is None: return {"error": "Could not decode image"}
+        
+        t_start = time.time()
+        m, _ = get_model()
+        
+        if m is None:
+            return {"status": "error", "message": "Detection model not loaded"}
             
-            if cls == 0: label, color, valid, poacher_detected = "Poacher", (0, 0, 255), True, True; max_poacher_conf = max(max_poacher_conf, conf)
-            elif cls == 1: label, color, valid = "Ranger", (0, 255, 0), True
-            elif cls == 2: label, color, valid, weapon_detected = "Weapon", (0, 0, 255), True, True; max_weapon_conf = max(max_weapon_conf, conf)
-            elif cls == 3: label, color, valid, weapon_detected = "WW", (0, 165, 255), True, True; max_weapon_conf = max(max_weapon_conf, conf)
-            
-            if valid:
-                detections.append({"box": [x1, y1, x2, y2], "class_id": cls, "label": label, "confidence": conf})
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(frame, f"{label} {int(conf*100)}%", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-            
-    mail_sent = False
-    if (poacher_detected or weapon_detected) and (time.time() - last_email_time > EMAIL_COOLDOWN):
-        temp_path = os.path.abspath("temp_alert_frame.jpg")
-        cv2.imwrite(temp_path, frame)
-        recipient = user_email if "@" in user_email and user_email != "ranger_dev@wildeye.ai" else os.getenv("MAIL_RECIPIENT")
-        if recipient:
-            if send_alert_email(temp_path, recipient):
-                mail_sent, last_email_time = True, time.time()
+        results = m(frame, conf=0.15, imgsz=480)
+        t_inference = time.time() - t_start
+        print(f"DEBUG: Frame Inference took {t_inference:.2f}s", flush=True)
+        
+        detections, poacher_detected, weapon_detected = [], False, False
+        max_poacher_conf, max_weapon_conf = 0.0, 0.0
+        
+        if results and len(results) > 0 and results[0] is not None:
+            res = results[0]
+            if hasattr(res, 'boxes') and res.boxes is not None:
+                for box in res.boxes:
+                    if not hasattr(box, 'xyxy') or box.xyxy is None or len(box.xyxy) == 0: continue
+                    
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    cls = int(box.cls[0]) if (hasattr(box, 'cls') and box.cls is not None and len(box.cls) > 0) else 0
+                    conf = float(box.conf[0]) if (hasattr(box, 'conf') and box.conf is not None and len(box.conf) > 0) else 0.0
+                    
+                    label_names = getattr(m, 'names', {})
+                    label, color, valid = label_names.get(cls, f"Object {cls}"), (255, 255, 255), False
+                    
+                    if cls == 0: 
+                        label, color, valid, poacher_detected = "Poacher", (0, 0, 255), True, True
+                        max_poacher_conf = max(max_poacher_conf, conf)
+                    elif cls == 1: 
+                        label, color, valid = "Ranger", (0, 255, 0), True
+                    elif cls == 2 or cls == 3: 
+                        label, color, valid, weapon_detected = "Weapon", (0, 0, 255), True, True
+                        max_weapon_conf = max(max_weapon_conf, conf)
+                    
+                    if valid:
+                        detections.append({"box": [x1, y1, x2, y2], "class_id": cls, "label": label, "confidence": conf})
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                        cv2.putText(frame, f"{label} {int(conf*100)}%", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
                 
-    _, buffer = cv2.imencode('.jpg', frame)
-    return {
-        "status": "completed",
-        "image": f"data:image/jpeg;base64,{base64.b64encode(buffer).decode('utf-8')}",
-        "detections": detections,
-        "summary": {
-            "poacher": {"detected": poacher_detected, "confidence": max_poacher_conf},
-            "weapon": {"detected": weapon_detected, "confidence": max_weapon_conf},
-            "mail": {"detected": mail_sent, "confidence": 1.0 if mail_sent else 0.0},
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        mail_sent = False
+        if (poacher_detected or weapon_detected) and (time.time() - last_email_time > EMAIL_COOLDOWN):
+            temp_path = os.path.abspath("temp_alert_frame.jpg")
+            cv2.imwrite(temp_path, frame)
+            recipient = user_email if (user_email and "@" in user_email and user_email != "ranger_dev@wildeye.ai") else os.getenv("MAIL_RECIPIENT")
+            if recipient:
+                if send_alert_email(temp_path, recipient):
+                    mail_sent, last_email_time = True, time.time()
+                    
+        _, buffer = cv2.imencode('.jpg', frame)
+        return {
+            "status": "completed",
+            "image": f"data:image/jpeg;base64,{base64.b64encode(buffer).decode('utf-8')}",
+            "detections": detections,
+            "summary": {
+                "poacher": {"detected": poacher_detected, "confidence": max_poacher_conf},
+                "weapon": {"detected": weapon_detected, "confidence": max_weapon_conf},
+                "mail": {"detected": mail_sent, "confidence": 1.0 if mail_sent else 0.0},
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
         }
-    }
+    except Exception as e:
+        print(f"Error in process_frame: {e}", flush=True)
+        return {"error": f"Frame analysis failed: {str(e)}"}
