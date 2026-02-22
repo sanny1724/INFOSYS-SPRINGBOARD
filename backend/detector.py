@@ -72,29 +72,29 @@ def process_video(video_path: str, user_email: str):
             
             if m and len(results) > 0:
                 for box in results[0].boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                cls = int(box.cls[0])
-                conf = float(box.conf[0])
-                label = model.names[cls]
-                color = (255, 255, 255)
-                
-                valid = False
-                if cls == 0 and conf > 0.15: # Poacher
-                    label, color, valid, poacher_detected = "Poacher", (0, 0, 255), True, True
-                    max_poacher_conf = max(max_poacher_conf, conf)
-                elif cls == 1 and conf > 0.35: # Ranger
-                    label, color, valid = "Ranger", (0, 255, 0), True
-                elif cls == 2 and conf > 0.15: # Weapon
-                    label, color, valid, weapon_detected = "Weapon", (0, 0, 255), True, True
-                    max_weapon_conf = max(max_weapon_conf, conf)
-                elif cls == 3 and conf > 0.15: # WW
-                    label, color, valid, weapon_detected = "WW", (0, 165, 255), True, True
-                    max_weapon_conf = max(max_weapon_conf, conf)
-                
-                if valid:
-                    detections.append({"box": [x1, y1, x2, y2], "class_id": cls, "label": label, "confidence": conf})
-                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
-                    cv2.putText(annotated_frame, f"{label} {int(conf*100)}%", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    cls = int(box.cls[0])
+                    conf = float(box.conf[0])
+                    label = m.names[cls]
+                    color = (255, 255, 255)
+                    
+                    valid = False
+                    if cls == 0 and conf > 0.15: # Poacher
+                        label, color, valid, poacher_detected = "Poacher", (0, 0, 255), True, True
+                        max_poacher_conf = max(max_poacher_conf, conf)
+                    elif cls == 1 and conf > 0.35: # Ranger
+                        label, color, valid = "Ranger", (0, 255, 0), True
+                    elif cls == 2 and conf > 0.15: # Weapon
+                        label, color, valid, weapon_detected = "Weapon", (0, 0, 255), True, True
+                        max_weapon_conf = max(max_weapon_conf, conf)
+                    elif cls == 3 and conf > 0.15: # WW
+                        label, color, valid, weapon_detected = "WW", (0, 165, 255), True, True
+                        max_weapon_conf = max(max_weapon_conf, conf)
+                    
+                    if valid:
+                        detections.append({"box": [x1, y1, x2, y2], "class_id": cls, "label": label, "confidence": conf})
+                        cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
+                        cv2.putText(annotated_frame, f"{label} {int(conf*100)}%", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
             
             cv2.imwrite(output_path, annotated_frame)
         else:
