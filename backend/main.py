@@ -21,7 +21,7 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
-print(">>> VERSION 3.0 - BACKEND STARTUP <<<", flush=True)
+print(">>> VERSION 3.1 - BACKEND STARTUP <<<", flush=True)
 print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
 
 # Important: Use absolute path for consistency
@@ -31,7 +31,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/ping")
 async def ping():
-    return {"pong": "version 3.0"}
+    return {"pong": "version 3.1"}
 
 @app.get("/api/health")
 async def health_check():
@@ -47,7 +47,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "3.0",
+        "version": "3.1",
         "database": db_status,
         "model_file": "exists" if os.path.exists(detector.model_path) else "missing",
         "model_loaded": m is not None,
@@ -66,11 +66,8 @@ class UserCreate(BaseModel):
     username: str
     password: str
 
-    @validator('password')
-    def password_length_limit(cls, v):
-        if len(v) > 72:
-            raise ValueError('Password cannot be longer than 72 characters due to security limits')
-        return v
+    username: str
+    password: str
 
     @validator('username')
     def username_must_be_email(cls, v):
@@ -262,8 +259,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = "../uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Static files and UPLOAD_DIR already defined at top
 
 # Serve uploaded/processed files
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
@@ -526,7 +522,7 @@ if os.path.exists("../frontend/dist"):
 else:
     @app.get("/")
     async def root_fallback():
-        return {"status": "ok", "version": "2.9", "note": "Frontend dist folder not found"}
+        return {"status": "ok", "version": "3.1", "note": "Frontend dist folder not found"}
 
 import uvicorn
 if __name__ == "__main__":
