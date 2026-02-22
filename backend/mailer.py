@@ -14,12 +14,12 @@ def send_alert_email(image_path: str, recipient_email: str, subject: str = "URGE
     if sender_password:
         sender_password = sender_password.replace(" ", "")
 
-    print(f"DEBUG: Sender: {sender_email[:3]}***@{sender_email.split('@')[-1]}")
-    print(f"DEBUG: Recipient: {recipient_email}")
-    
     if not sender_email or not sender_password:
-        print("Error: Email credentials not found in environment variables.")
+        print("Warning: Email credentials not found. Skipping email.", flush=True)
         return False
+
+    print(f"DEBUG: Sender: {str(sender_email)[:3]}***@{str(sender_email).split('@')[-1] if '@' in str(sender_email) else 'unknown'}")
+    print(f"DEBUG: Recipient: {recipient_email}")
 
     print(f"DEBUG: Connecting to SMTP server...")
     
