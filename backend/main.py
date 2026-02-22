@@ -258,24 +258,8 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 if os.path.exists("../frontend/dist"):
     app.mount("/assets", StaticFiles(directory="../frontend/dist/assets"), name="assets")
 
-# Serve React App
-@app.get("/")
-async def serve_frontend():
-    if os.path.exists("../frontend/dist/index.html"):
-        return FileResponse("../frontend/dist/index.html")
-    return {"error": "Frontend not built. Run 'npm run build' in frontend directory."}
-
-# Catch-all route for React Router
-@app.get("/{path:path}")
-async def catch_all(path: str):
-    # Only redirect if it's not an API call or static file
-    if path.startswith("api/") or path.startswith("auth/") or path.startswith("uploads/") or path.startswith("ws/"):
-        raise HTTPException(status_code=404, detail="Not Found")
-    
-    index_path = "../frontend/dist/index.html"
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"error": "Frontend not built."}
+# Serving frontend will be moved to the end
+# Static mounts and catch-all routes moved to the end
 
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...), background_tasks: BackgroundTasks = None, current_user: dict = Depends(get_current_user)):
@@ -497,6 +481,25 @@ async def callback_github(code: str, db=Depends(get_database)):
         )
         
         return {"access_token": access_token, "token_type": "bearer", "redirect": f"{FRONTEND_URL}/login?token={access_token}"}
+
+@app.get("/")
+async def serve_frontend():
+    if os.path.exists("../frontend/dist/index.html"):
+        return FileResponse("../frontend/dist/index.html")
+    return {"error": "Frontend not built. Run 'npm run build' in frontend directory."}
+
+# Catch-all route for React Router
+@app.get("/{path:path}")
+async def catch_all(path: str):
+    # Only redirect if it's not an API call or static file
+    # We exclude /upload and /results explicitly too
+    if any(path.startswith(p) for p in ["api/", "auth/", "uploads/", "ws/", "upload", "results/", "detect_frame"]):
+        raise HTTPException(status_code=404, detail="Not Found")
+    
+    index_path = "../frontend/dist/index.html"
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"error": "Frontend not built."}
 
 import uvicorn
 if __name__ == "__main__":
