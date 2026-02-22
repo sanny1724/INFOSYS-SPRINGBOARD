@@ -67,9 +67,10 @@ def process_video(video_path: str, user_email: str):
                 raise Exception(f"Could not open image file: {video_path}")
             
             annotated_frame = frame.copy()
-            results = model(frame, conf=0.15) if model else []
+            m, _ = get_model()
+            results = m(frame, conf=0.15) if m else []
             
-            if model and len(results) > 0:
+            if m and len(results) > 0:
                 for box in results[0].boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 cls = int(box.cls[0])
@@ -107,8 +108,9 @@ def process_video(video_path: str, user_email: str):
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret: break
-                results = model(frame, conf=0.25) if model else []
-                if model and len(results) > 0:
+                m, _ = get_model()
+                results = m(frame, conf=0.25) if m else []
+                if m and len(results) > 0:
                     out.write(results[0].plot())
                     for box in results[0].boxes:
                         cls, conf = int(box.cls[0]), float(box.conf[0])
@@ -144,25 +146,26 @@ def process_frame(image_bytes, user_email: str):
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if frame is None: return {"error": "Could not decode image"}
     
-    results = model(frame, conf=0.15) if model else None
+    m, _ = get_model()
+    results = m(frame, conf=0.15) if m else None
     detections, poacher_detected, weapon_detected = [], False, False
     max_poacher_conf, max_weapon_conf = 0.0, 0.0
     
     if results and len(results) > 0:
         for box in results[0].boxes:
-        x1, y1, x2, y2 = map(int, box.xyxy[0])
-        cls, conf = int(box.cls[0]), float(box.conf[0])
-        label, color, valid = model.names[cls], (255, 255, 255), False
-        
-        if cls == 0: label, color, valid, poacher_detected = "Poacher", (0, 0, 255), True, True; max_poacher_conf = max(max_poacher_conf, conf)
-        elif cls == 1: label, color, valid = "Ranger", (0, 255, 0), True
-        elif cls == 2: label, color, valid, weapon_detected = "Weapon", (0, 0, 255), True, True; max_weapon_conf = max(max_weapon_conf, conf)
-        elif cls == 3: label, color, valid, weapon_detected = "WW", (0, 165, 255), True, True; max_weapon_conf = max(max_weapon_conf, conf)
-        
-        if valid:
-            detections.append({"box": [x1, y1, x2, y2], "class_id": cls, "label": label, "confidence": conf})
-            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            cv2.putText(frame, f"{label} {int(conf*100)}%", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            cls, conf = int(box.cls[0]), float(box.conf[0])
+            label, color, valid = m.names[cls], (255, 255, 255), False
+            
+            if cls == 0: label, color, valid, poacher_detected = "Poacher", (0, 0, 255), True, True; max_poacher_conf = max(max_poacher_conf, conf)
+            elif cls == 1: label, color, valid = "Ranger", (0, 255, 0), True
+            elif cls == 2: label, color, valid, weapon_detected = "Weapon", (0, 0, 255), True, True; max_weapon_conf = max(max_weapon_conf, conf)
+            elif cls == 3: label, color, valid, weapon_detected = "WW", (0, 165, 255), True, True; max_weapon_conf = max(max_weapon_conf, conf)
+            
+            if valid:
+                detections.append({"box": [x1, y1, x2, y2], "class_id": cls, "label": label, "confidence": conf})
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(frame, f"{label} {int(conf*100)}%", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             
     mail_sent = False
     if (poacher_detected or weapon_detected) and (time.time() - last_email_time > EMAIL_COOLDOWN):
