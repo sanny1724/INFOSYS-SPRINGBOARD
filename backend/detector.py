@@ -9,17 +9,27 @@ import base64
 from datetime import datetime
 import random
 
+from pathlib import Path
+
 # Load the TRAINED model
 # In production, we use a static path to the unignored model file
-base_dir = os.path.dirname(__file__)
-model_path = os.path.abspath(os.path.join(base_dir, "models", "best.pt"))
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / "models" / "best.pt"
 
-# Fallback for local development
-if not os.path.exists(model_path):
-    model_path = os.path.abspath(os.path.join(base_dir, "runs", "detect", "train2", "weights", "best.pt"))
+print(f"DEBUG: Attempting to load model from: {MODEL_PATH}")
 
-print(f"Loading model from: {model_path}")
-model = YOLO(model_path)
+if not MODEL_PATH.exists():
+    # If the model is not in the models directory, check the current directory (fallback)
+    MODEL_PATH = BASE_DIR / "best.pt"
+    print(f"DEBUG: Model not found in models/, trying fallback: {MODEL_PATH}")
+
+if not MODEL_PATH.exists():
+    error_msg = f"CRITICAL ERROR: Model file not found at {MODEL_PATH}. Deployment will fail."
+    print(error_msg)
+    # Note: We still try to load it so the error is visible in YOLO logs, 
+    # but we've logged a clear error message first.
+    
+model = YOLO(str(MODEL_PATH))
 
 # Global variable for rate limiting
 last_email_time = 0
