@@ -30,7 +30,7 @@ backend/*.png
 backend/*.jpg
 backend/dataset/
 backend/runs/
-!backend/models/best.pt
+!backend/best.pt
 
 # Editor
 .vscode/
@@ -42,5 +42,5 @@ backend/runs/
 
 # Allow only specifically needed models
 *.pt
-!backend/models/best.pt
+!backend/best.pt
 

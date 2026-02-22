@@ -455,3 +455,8 @@ async def callback_github(code: str, db=Depends(get_database)):
         )
         
         return {"access_token": access_token, "token_type": "bearer", "redirect": f"{FRONTEND_URL}/login?token={access_token}"}
+
+import uvicorn
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
