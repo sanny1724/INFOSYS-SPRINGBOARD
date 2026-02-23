@@ -11,17 +11,20 @@ def send_alert_email(image_path: str, recipient_email: str, subject: str = "URGE
     # Try both naming conventions
     sender_email = os.getenv("EMAIL_SENDER") or os.getenv("MAIL_USERNAME")
     sender_password = os.getenv("EMAIL_PASSWORD") or os.getenv("MAIL_PASSWORD")
+    
     if sender_password:
         sender_password = sender_password.replace(" ", "")
 
-    if not sender_email or not sender_password:
-        print("Warning: Email credentials not found. Skipping email.", flush=True)
+    if not sender_email:
+        print("❌ CRITICAL: EMAIL_SENDER is missing in Environment Variables!", flush=True)
+        return False
+    if not sender_password:
+        print("❌ CRITICAL: EMAIL_PASSWORD is missing in Environment Variables!", flush=True)
         return False
 
-    print(f"DEBUG: Sender: {str(sender_email)[:3]}***@{str(sender_email).split('@')[-1] if '@' in str(sender_email) else 'unknown'}")
-    print(f"DEBUG: Recipient: {recipient_email}")
+    print(f"DEBUG: Attempting to send mail via: {sender_email}", flush=True)
+    print(f"DEBUG: Recipient: {recipient_email}", flush=True)
 
-    print(f"DEBUG: Connecting to SMTP server...")
     
     try:
         msg = MIMEMultipart()

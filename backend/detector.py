@@ -151,6 +151,7 @@ def process_video(video_path: str, user_email: str):
         if poacher_detected or weapon_detected:
             recipient = user_email if (user_email and "@" in user_email and user_email != "ranger_dev@wildeye.ai") else os.getenv("MAIL_RECIPIENT")
             if recipient:
+                print(f"🛡️ DEBUG: Sending Alert Email to: {recipient}", flush=True)
                 mail_sent = send_alert_email(output_path, recipient)
                 
         results_data = {
@@ -224,6 +225,7 @@ def process_frame(image_bytes, user_email: str):
             cv2.imwrite(temp_path, frame)
             recipient = user_email if (user_email and "@" in user_email and user_email != "ranger_dev@wildeye.ai") else os.getenv("MAIL_RECIPIENT")
             if recipient:
+                print(f"🛡️ DEBUG: Sending Live Alert Email to: {recipient}", flush=True)
                 if send_alert_email(temp_path, recipient):
                     mail_sent, last_email_time = True, time.time()
                     

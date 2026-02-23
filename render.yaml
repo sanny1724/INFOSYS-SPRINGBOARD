@@ -17,3 +17,9 @@ services:
         value: "https://your-app-name.onrender.com/callback/google"
       - key: GITHUB_REDIRECT_URI
         value: "https://your-app-name.onrender.com/callback/github"
+      - key: EMAIL_SENDER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: MAIL_RECIPIENT
+        sync: false
