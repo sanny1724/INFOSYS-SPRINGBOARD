@@ -40,11 +40,11 @@ if user and pw and recip:
     cv2.imwrite("diag_test.jpg", img)
     
     try:
-        success = send_alert_email("diag_test.jpg", recip, "Diagnostic Test", "This is a test from the debug script.")
+        success, msg = send_alert_email("diag_test.jpg", recip, "Diagnostic Test", "This is a test from the debug script.")
         if success:
             print("    -> Email sent SUCCESSFULLY.")
         else:
-            print("    -> Email FAILED to send.")
+            print(f"    -> Email FAILED to send: {msg}")
     except Exception as e:
         print(f"    -> Email ERROR: {e}")
 else:
