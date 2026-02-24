@@ -1,14 +1,17 @@
 import cv2
-# from ultralytics import YOLO # Moved inside get_model to prevent startup hangs
 import os
 import json
 import time
 from mailer import send_alert_email
 import numpy as np
 import base64
-from datetime import datetime
+import datetime
 import random
 from pathlib import Path
+
+# Speed Optimization Constants
+FRAME_SKIP = 6  # Process every 6th frame
+INFERENCE_SIZE = 320 # Smaller size for speed
 
 # Global model variables
 model = None
@@ -127,16 +130,22 @@ def process_video(video_path: str, user_email: str):
             out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
             
             m, _ = get_model()
+            frame_count = 0
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret: break
                 
+                frame_count += 1
+                if frame_count % FRAME_SKIP != 0:
+                    continue  # Skip this frame
+                
                 if m is None:
                     out.write(frame); continue
                     
-                results = m(frame, conf=0.25, imgsz=480)
+                results = m(frame, conf=0.25, imgsz=INFERENCE_SIZE)
                 if results and len(results) > 0 and results[0] is not None:
-                    out.write(results[0].plot())
+                    annotated = results[0].plot()
+                    out.write(annotated)
                     if hasattr(results[0], 'boxes') and results[0].boxes is not None:
                         for box in results[0].boxes:
                             if not hasattr(box, 'cls') or box.cls is None or len(box.cls) == 0: continue
@@ -161,7 +170,7 @@ def process_video(video_path: str, user_email: str):
             "poacher_confidence": round(max_poacher_conf * 100, 1),
             "weapon_confidence": round(max_weapon_conf * 100, 1),
             "mail_sent": "Yes" if mail_sent else "No",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "video_url": f"/uploads/{os.path.basename(output_path)}",
             "detections": detections if is_image else []
         }
@@ -238,7 +247,7 @@ def process_frame(image_bytes, user_email: str):
                 "poacher": {"detected": poacher_detected, "confidence": max_poacher_conf},
                 "weapon": {"detected": weapon_detected, "confidence": max_weapon_conf},
                 "mail": {"detected": mail_sent, "confidence": 1.0 if mail_sent else 0.0},
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         }
     except Exception as e:

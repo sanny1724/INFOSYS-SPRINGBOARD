@@ -12,7 +12,8 @@ import detector # Import the detector module
 from database import get_database
 from auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from jose import JWTError, jwt
-from datetime import timedelta, datetime
+from datetime import timedelta
+import datetime
 import secrets
 from dotenv import load_dotenv
 from mailer import send_password_reset_email
@@ -124,7 +125,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_d
         error_msg = f"JWT Validation Error: {str(e)}"
         print(f"DEBUG: {error_msg}", flush=True)
         with open("auth_debug.log", "a") as f:
-            f.write(f"{datetime.now()} - Token: {token[:10]}... - Error: {error_msg}\n")
+            f.write(f"{datetime.datetime.now()} - Token: {token[:10]}... - Error: {error_msg}\n")
             
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -177,7 +178,7 @@ async def dev_login(db=Depends(get_database)):
             "hashed_password": "dev_password",
             "name": "Ranger Dev",
             "picture": "https://api.dicebear.com/7.x/avataaars/svg?seed=Ranger",
-            "created_at": datetime.now().strftime("%Y-%m-%d")
+            "created_at": datetime.datetime.now().strftime("%Y-%m-%d")
         }
         await db.users.insert_one(user_dict)
     
@@ -203,7 +204,7 @@ async def forgot_password(request: ForgotPasswordRequest, background_tasks: Back
         return {"message": "If this email is registered, you will receive a reset link."}
 
     reset_token = secrets.token_urlsafe(32)
-    reset_token_expires = datetime.now() + timedelta(minutes=30)
+    reset_token_expires = datetime.datetime.now() + timedelta(minutes=30)
 
     await db.users.update_one(
         {"username": request.email},
@@ -226,7 +227,7 @@ async def reset_password(request: ResetPasswordRequest, db=Depends(get_database)
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
         
-    if user.get("reset_token_expires") < datetime.now():
+    if user.get("reset_token_expires") < datetime.datetime.now():
         raise HTTPException(status_code=400, detail="Token has expired")
 
     hashed_password = get_password_hash(request.new_password)
@@ -387,7 +388,7 @@ async def callback_google(code: str, db=Depends(get_database)):
             error_msg = f"Failed to get access token. Response: {token_data}"
             print(f"DEBUG: {error_msg}", flush=True)
             with open("auth_debug.log", "a") as f:
-                f.write(f"{datetime.now()} - Google Auth Fail: {error_msg}\n")
+                f.write(f"{datetime.datetime.now()} - Google Auth Fail: {error_msg}\n")
             raise HTTPException(status_code=400, detail="Failed to retrieve Google access token")
         
         # Use v3 endpoint
@@ -412,7 +413,7 @@ async def callback_google(code: str, db=Depends(get_database)):
                 "hashed_password": "oauth_user",
                 "name": name,
                 "picture": picture,
-                "created_at": datetime.now().strftime("%Y-%m-%d")
+                "created_at": datetime.datetime.now().strftime("%Y-%m-%d")
             }
             await db.users.insert_one(user_dict)
         else:
