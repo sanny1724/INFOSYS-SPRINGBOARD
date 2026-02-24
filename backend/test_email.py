@@ -25,12 +25,12 @@ else:
         with open("test_image.jpg", "wb") as f:
             f.write(b"dummy image content")
 
-    success = send_alert_email(image_path, recipient, subject="EcoEye Test Email", body="This is a test email to verify your configuration.")
+    success, msg = send_alert_email(image_path, recipient, subject="EcoEye Test Email", body="This is a test email to verify your configuration.")
     
     if success:
         print("\nSUCCESS: Test email sent! Check your inbox.")
     else:
-        print("\nFAILURE: Could not send email. Check your App Password and internet connection.")
+        print(f"\nFAILURE: {msg}")
     
     # Clean up
     if os.path.exists("test_image.jpg"):

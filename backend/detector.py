@@ -156,12 +156,13 @@ def process_video(video_path: str, user_email: str):
                     out.write(frame)
             cap.release(); out.release()
             
-        mail_sent = False
+        mail_sent_status = "No"
         if poacher_detected or weapon_detected:
-            recipient = user_email if (user_email and "@" in user_email and user_email != "ranger_dev@wildeye.ai") else os.getenv("MAIL_RECIPIENT")
+            recipient = user_email if (user_email and "@" in user_email) else os.getenv("MAIL_RECIPIENT")
             if recipient:
                 print(f"🛡️ DEBUG: Sending Alert Email to: {recipient}", flush=True)
-                mail_sent = send_alert_email(output_path, recipient)
+                success, msg = send_alert_email(output_path, recipient)
+                mail_sent_status = "Yes" if success else f"Failed: {msg}"
                 
         results_data = {
             "status": "completed",
@@ -169,7 +170,7 @@ def process_video(video_path: str, user_email: str):
             "weapon_detected": "Yes" if weapon_detected else "No",
             "poacher_confidence": round(max_poacher_conf * 100, 1),
             "weapon_confidence": round(max_weapon_conf * 100, 1),
-            "mail_sent": "Yes" if mail_sent else "No",
+            "mail_sent": mail_sent_status,
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "video_url": f"/uploads/{os.path.basename(output_path)}",
             "detections": detections if is_image else []
@@ -228,15 +229,18 @@ def process_frame(image_bytes, user_email: str):
                         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                         cv2.putText(frame, f"{label} {int(conf*100)}%", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
                 
-        mail_sent = False
+        mail_sent_status = "No"
         if (poacher_detected or weapon_detected) and (time.time() - last_email_time > EMAIL_COOLDOWN):
             temp_path = os.path.abspath("temp_alert_frame.jpg")
             cv2.imwrite(temp_path, frame)
-            recipient = user_email if (user_email and "@" in user_email and user_email != "ranger_dev@wildeye.ai") else os.getenv("MAIL_RECIPIENT")
+            recipient = user_email if (user_email and "@" in user_email) else os.getenv("MAIL_RECIPIENT")
             if recipient:
                 print(f"🛡️ DEBUG: Sending Live Alert Email to: {recipient}", flush=True)
-                if send_alert_email(temp_path, recipient):
-                    mail_sent, last_email_time = True, time.time()
+                success, msg = send_alert_email(temp_path, recipient)
+                if success:
+                    mail_sent_status, last_email_time = "Yes", time.time()
+                else:
+                    mail_sent_status = f"Failed: {msg}"
                     
         _, buffer = cv2.imencode('.jpg', frame)
         return {
@@ -246,7 +250,7 @@ def process_frame(image_bytes, user_email: str):
             "summary": {
                 "poacher": {"detected": poacher_detected, "confidence": max_poacher_conf},
                 "weapon": {"detected": weapon_detected, "confidence": max_weapon_conf},
-                "mail": {"detected": mail_sent, "confidence": 1.0 if mail_sent else 0.0},
+                "mail": {"detected": mail_sent_status, "confidence": 1.0 if mail_sent_status == "Yes" else 0.0},
                 "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         }

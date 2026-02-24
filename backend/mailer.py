@@ -84,18 +84,18 @@ def send_alert_email(image_path: str, recipient_email: str, subject: str = "URGE
             server.send_message(msg)
             
         print("DEBUG: Email sent successfully!", flush=True)
-        return True
+        return True, "Email sent successfully"
 
     except smtplib.SMTPAuthenticationError as e:
-        msg = f"ERROR: SMTP Authentication Failed! Check your EMAIL_SENDER/PASSWORD in .env. {e}"
-        print(msg, flush=True)
+        msg = f"AUTH FAILED: Check App Password on Render. {e}"
+        print(f"ERROR: {msg}", flush=True)
         with open("mail_debug.log", "a") as f: f.write(f"{datetime.datetime.now()} - {msg}\n")
-        return False
+        return False, "SMTP Authentication Failed"
     except Exception as e:
-        msg = f"ERROR: SMTP Connection Failed: {e}"
-        print(msg, flush=True)
+        msg = f"CONNECTION FAILED: {str(e)}"
+        print(f"ERROR: {msg}", flush=True)
         with open("mail_debug.log", "a") as f: f.write(f"{datetime.datetime.now()} - {msg}\n")
-        return False
+        return False, str(e)
 
 def send_password_reset_email(recipient_email: str, reset_link: str):
     subject = "Reset Your Password - EcoEye AI"
