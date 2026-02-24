@@ -22,8 +22,16 @@ load_dotenv()
 
 app = FastAPI(title="Wildeye AI Backend")
 
-print(">>> VERSION 3.4 - FINAL STABILITY DEPLOY <<<", flush=True)
+print(">>> VERSION 3.5 - ROBUST FILENAME HANDLING <<<", flush=True)
 print(f"DEBUG: Current Directory: {os.getcwd()}", flush=True)
+
+import re
+def secure_filename(filename):
+    """Sanitize filename to avoid path issues and polling mismatches."""
+    name, ext = os.path.splitext(filename)
+    # Replace anything not alphanumeric, dash, or underscore with underscore
+    name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
+    return f"{name}{ext.lower()}"
 
 # Important: Use absolute path for consistency
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -275,26 +283,27 @@ if os.path.exists("../frontend/dist"):
 
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...), background_tasks: BackgroundTasks = None, current_user: dict = Depends(get_current_user)):
-    print(f"DEBUG: Upload received: {file.filename}", flush=True)
-    file_location = os.path.join(UPLOAD_DIR, file.filename)
+    safe_name = secure_filename(file.filename)
+    print(f"DEBUG: Upload received: {file.filename} -> {safe_name}", flush=True)
+    file_location = os.path.join(UPLOAD_DIR, safe_name)
     
     with open(file_location, "wb+") as file_object:
         shutil.copyfileobj(file.file, file_object)
     
-    # Process images SYNC to avoid OOM killer for background threads
-    is_image = file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp'))
+    # Process images SYNC
+    is_image = safe_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp'))
     if is_image:
         print(f"DEBUG: Processing IMAGE SYNC: {file_location}", flush=True)
         detector.process_video(file_location, current_user["username"])
-        return {"info": f"file processed", "status": "completed", "filename": file.filename}
+        return {"info": "file processed", "status": "completed", "filename": safe_name}
     
     # Process videos in background
     if background_tasks:
         print(f"DEBUG: Background task for VIDEO: {file_location}", flush=True)
         background_tasks.add_task(detector.process_video, file_location, current_user["username"])
-        return {"info": f"video queued", "status": "processing_started"}
+        return {"info": "video queued", "status": "processing_started", "filename": safe_name}
     
-    return {"info": "error", "error": "No background task handler"}
+    return {"status": "error", "message": "No background task handler"}
 
 @app.get("/results/{filename}")
 async def get_results(filename: str):
@@ -311,6 +320,7 @@ async def get_results(filename: str):
     # Check if original file exists
     file_path = os.path.join(UPLOAD_DIR, filename)
     if not os.path.exists(file_path):
+        print(f"ERROR: get_results could not find file at: {file_path}", flush=True)
         return {"status": "error", "message": "File not found on server"}
     
     return {"status": "processing"}

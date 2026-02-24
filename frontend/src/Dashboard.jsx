@@ -131,7 +131,7 @@ function Dashboard() {
       console.log("Upload success:", data)
 
       // Start polling for results
-      const filename = fileToUpload.name
+      const filename = data.filename || fileToUpload.name
       const pollInterval = setInterval(async () => {
         try {
           const res = await fetch(`/results/${filename}?t=${Date.now()}`)
